@@ -18,9 +18,28 @@ export const BookingView: React.FC<BookingViewProps> = ({ onBookingSuccess, goTo
   const [email, setEmail] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [timeSlot, setTimeSlot] = useState('10:00 AM - 11:00 AM');
+  const [allBookings, setAllBookings] = useState<Booking[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [confirmedBooking, setConfirmedBooking] = useState<Booking | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
+
+  React.useEffect(() => {
+    fetch('/api/bookings')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setAllBookings(data);
+      })
+      .catch(() => {});
+  }, [confirmedBooking]);
+
+  const bookedSlotsForDate = allBookings.filter(b => b.date === date).map(b => b.timeSlot);
+
+  React.useEffect(() => {
+    if (bookedSlotsForDate.includes(timeSlot)) {
+      const firstAvailable = timeSlots.find(s => !bookedSlotsForDate.includes(s));
+      if (firstAvailable) setTimeSlot(firstAvailable);
+    }
+  }, [date, allBookings]);
 
   const brands = {
     Phone: ['Apple', 'Samsung', 'Google', 'Motorola', 'OnePlus', 'Other'],
@@ -75,11 +94,11 @@ export const BookingView: React.FC<BookingViewProps> = ({ onBookingSuccess, goTo
         })
       });
       const data = await res.json();
-      if (data.trackingCode) {
+      if (res.ok && data.trackingCode) {
         setConfirmedBooking(data);
         onBookingSuccess(data);
       } else {
-        setErrorMessage('Failed to create booking. Please try calling us at 360-270-8896.');
+        setErrorMessage(data.error || 'This time slot is already booked for the selected date. Please select another slot.');
       }
     } catch (err) {
       // Fallback mock booking if server fails
@@ -266,18 +285,31 @@ export const BookingView: React.FC<BookingViewProps> = ({ onBookingSuccess, goTo
               </div>
 
               <div className="space-y-2">
-                <label className="block text-sm font-bold text-slate-900 flex items-center gap-1.5">
-                  <Clock className="w-4 h-4 text-sky-600" /> Preferred Time Slot
+                <label className="block text-sm font-bold text-slate-900 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Clock className="w-4 h-4 text-sky-600" /> Preferred Time Slot
+                  </span>
+                  <span className="text-[11px] text-sky-600 font-semibold">
+                    {bookedSlotsForDate.length > 0 ? `${bookedSlotsForDate.length} slot(s) booked on this date` : 'All slots available'}
+                  </span>
                 </label>
                 <select
                   value={timeSlot}
                   onChange={(e) => setTimeSlot(e.target.value)}
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-900 focus:outline-none focus:border-sky-500"
                 >
-                  {timeSlots.map((slot) => (
-                    <option key={slot} value={slot}>{slot}</option>
-                  ))}
+                  {timeSlots.map((slot) => {
+                    const isBooked = bookedSlotsForDate.includes(slot);
+                    return (
+                      <option key={slot} value={slot} disabled={isBooked}>
+                        {slot} {isBooked ? '— [BOOKED / UNAVAILABLE]' : '— [Available]'}
+                      </option>
+                    );
+                  })}
                 </select>
+                <p className="text-[11px] text-slate-500">
+                  Booked slots are automatically locked and never mixed up with other appointments.
+                </p>
               </div>
             </div>
 

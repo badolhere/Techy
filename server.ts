@@ -137,6 +137,13 @@ app.get("/api/bookings", (req, res) => {
 
 app.post("/api/bookings", (req, res) => {
   const { deviceType, brand, model, issue, customerName, phone, email, date, timeSlot } = req.body;
+  
+  // Check if slot is already booked for this date and timeSlot
+  const existing = bookings.find(b => b.date === date && b.timeSlot === timeSlot);
+  if (existing) {
+    return res.status(400).json({ error: "This time slot is already booked for the selected date. Please choose another available slot." });
+  }
+
   const trackingCode = `TECH-${Math.floor(1000 + Math.random() * 9000)}`;
   const newBooking: Booking = {
     id: `b-${Date.now()}`,
