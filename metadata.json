@@ -1,6 +1,6 @@
 {
-  "name": "Techy Longview - We Can Fix That",
-  "description": "Mobile repair shop and accessories featuring a booking system and online shop for phone accessories in Longview, WA.",
+  "name": "Techy Longview",
+  "description": "Professional mobile, tablet, and computer repair shop and accessories in Longview, WA.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -12,6 +12,8 @@ interface AdminViewProps {
   bookings: Booking[];
   setBookings: React.Dispatch<React.SetStateAction<Booking[]>>;
   orders: any[];
+  faqs: { question: string; answer: string }[];
+  setFaqs: React.Dispatch<React.SetStateAction<{ question: string; answer: string }[]>>;
 }
 
 export const AdminView: React.FC<AdminViewProps> = ({
@@ -23,12 +25,17 @@ export const AdminView: React.FC<AdminViewProps> = ({
   setServices,
   bookings,
   setBookings,
-  orders
+  orders,
+  faqs,
+  setFaqs
 }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState<'store' | 'products' | 'services' | 'bookings' | 'orders'>('store');
+  const [activeTab, setActiveTab] = useState<'store' | 'products' | 'services' | 'faqs' | 'bookings' | 'orders' | 'admins'>('store');
+
+  const [newFaqQ, setNewFaqQ] = useState('');
+  const [newFaqA, setNewFaqA] = useState('');
 
   // Form states for adding new product/service
   const [newProdName, setNewProdName] = useState('');
@@ -43,14 +50,68 @@ export const AdminView: React.FC<AdminViewProps> = ({
   const [newServDuration, setNewServDuration] = useState('30 mins');
   const [newServDesc, setNewServDesc] = useState('');
 
+  // Admin and Moderator credentials state
+  const [adminCredentials, setAdminCredentials] = useState({
+    username: 'admin',
+    pin: '1234'
+  });
+  const [teamMembers, setTeamMembers] = useState([
+    { id: 't-1', name: 'Lead Tech', role: 'Administrator', username: 'admin', pin: '1234' },
+    { id: 't-2', name: 'Store Manager', role: 'Moderator', username: 'manager', pin: '5678' }
+  ]);
+
+  // New team member form state
+  const [newMemberName, setNewMemberName] = useState('');
+  const [newMemberUsername, setNewMemberUsername] = useState('');
+  const [newMemberPin, setNewMemberPin] = useState('');
+  const [newMemberRole, setNewMemberRole] = useState<'Administrator' | 'Moderator'>('Moderator');
+
+  // Password / PIN change states
+  const [currentPinInput, setCurrentPinInput] = useState('');
+  const [newPinInput, setNewPinInput] = useState('');
+  const [pinChangeMsg, setPinChangeMsg] = useState('');
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (pin === '1234' || pin === '0000') {
+    // Check against any team member pin or username
+    const matched = teamMembers.find(t => t.pin === pin.trim() || t.username.toLowerCase() === pin.trim().toLowerCase());
+    if (matched || pin.trim() === adminCredentials.pin) {
       setIsAuthenticated(true);
       setError('');
     } else {
-      setError('Incorrect Admin PIN. Try default PIN: 1234');
+      setError('Incorrect Admin PIN.');
     }
+  };
+
+  const handleChangePin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPinInput || newPinInput.length < 4) {
+      setPinChangeMsg('PIN must be at least 4 characters.');
+      return;
+    }
+    setAdminCredentials(prev => ({ ...prev, pin: newPinInput }));
+    setPinChangeMsg('Admin PIN successfully updated!');
+    setNewPinInput('');
+  };
+
+  const handleAddTeamMember = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMemberName || !newMemberUsername || !newMemberPin) return;
+    const newMember = {
+      id: `t-${Date.now()}`,
+      name: newMemberName,
+      role: newMemberRole,
+      username: newMemberUsername,
+      pin: newMemberPin
+    };
+    setTeamMembers([...teamMembers, newMember]);
+    setNewMemberName('');
+    setNewMemberUsername('');
+    setNewMemberPin('');
+  };
+
+  const removeTeamMember = (id: string) => {
+    setTeamMembers(teamMembers.filter(t => t.id !== id));
   };
 
   const handleAddProduct = (e: React.FormEvent) => {
@@ -104,6 +165,14 @@ export const AdminView: React.FC<AdminViewProps> = ({
     setProducts(products.filter(p => p.id !== id));
   };
 
+  const handleAddFaq = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newFaqQ || !newFaqA) return;
+    setFaqs([...faqs, { question: newFaqQ, answer: newFaqA }]);
+    setNewFaqQ('');
+    setNewFaqA('');
+  };
+
   if (!isAuthenticated) {
     return (
       <div className="max-w-md mx-auto px-4 py-20">
@@ -117,9 +186,6 @@ export const AdminView: React.FC<AdminViewProps> = ({
             <p className="text-xs text-slate-500">
               Enter admin PIN to manage store details, prices, products, services, and repair bookings.
             </p>
-            <div className="text-[11px] text-sky-600 font-bold bg-sky-50 py-1 px-3 rounded-lg border border-sky-100 inline-block">
-              Demo PIN: 1234
-            </div>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
@@ -132,7 +198,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
               type="password"
               required
               maxLength={6}
-              placeholder="Enter PIN (1234)"
+              placeholder="Enter PIN"
               value={pin}
               onChange={(e) => setPin(e.target.value)}
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-center font-bold tracking-widest text-lg text-slate-900 focus:outline-none focus:border-sky-500"
@@ -172,11 +238,13 @@ export const AdminView: React.FC<AdminViewProps> = ({
       {/* Admin Navigation Tabs */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
         {[
-          { id: 'store', label: 'Store & Branding', icon: Settings },
+          { id: 'store', label: 'Store & Hours', icon: Settings },
           { id: 'products', label: 'Accessories Shop', icon: Package },
-          { id: 'services', label: 'Repair Services & Prices', icon: Wrench },
+          { id: 'services', label: 'Repair Services', icon: Wrench },
+          { id: 'faqs', label: `Q&A / FAQs (${faqs.length})`, icon: Settings },
           { id: 'bookings', label: `Repair Bookings (${bookings.length})`, icon: Calendar },
           { id: 'orders', label: `Shop Orders (${orders.length})`, icon: ShoppingBag },
+          { id: 'admins', label: 'Admin & Passwords', icon: ShieldCheck },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -197,12 +265,12 @@ export const AdminView: React.FC<AdminViewProps> = ({
         })}
       </div>
 
-      {/* Tab 1: Store & Branding */}
+      {/* Tab 1: Store & Branding & Hours */}
       {activeTab === 'store' && (
         <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-xl space-y-6">
           <div className="border-b border-slate-100 pb-4">
-            <h3 className="text-xl font-bold text-slate-900">Edit Store Details & Branding</h3>
-            <p className="text-xs text-slate-500">Changes update instantly across the entire website.</p>
+            <h3 className="text-xl font-bold text-slate-900">Edit Store Details & Operating Hours</h3>
+            <p className="text-xs text-slate-500">Changes update instantly across the entire website and footer.</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -264,6 +332,48 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 onChange={(e) => updateStoreDetails({ ...storeDetails, categories: e.target.value })}
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:border-sky-500"
               />
+            </div>
+          </div>
+
+          <div className="pt-6 border-t border-slate-100 space-y-4">
+            <h4 className="text-base font-bold text-slate-900">Store Operating Hours</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-700">Monday - Friday</label>
+                <input
+                  type="text"
+                  value={storeDetails.hours?.weekdays || '10:00 AM - 7:00 PM'}
+                  onChange={(e) => updateStoreDetails({
+                    ...storeDetails,
+                    hours: { ...(storeDetails.hours || {}), weekdays: e.target.value }
+                  })}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:border-sky-500"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-700">Saturday</label>
+                <input
+                  type="text"
+                  value={storeDetails.hours?.saturday || '10:00 AM - 6:00 PM'}
+                  onChange={(e) => updateStoreDetails({
+                    ...storeDetails,
+                    hours: { ...(storeDetails.hours || {}), saturday: e.target.value }
+                  })}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:border-sky-500"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-700">Sunday</label>
+                <input
+                  type="text"
+                  value={storeDetails.hours?.sunday || '11:00 AM - 5:00 PM'}
+                  onChange={(e) => updateStoreDetails({
+                    ...storeDetails,
+                    hours: { ...(storeDetails.hours || {}), sunday: e.target.value }
+                  })}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:border-sky-500"
+                />
+              </div>
             </div>
           </div>
 
@@ -452,7 +562,85 @@ export const AdminView: React.FC<AdminViewProps> = ({
         </div>
       )}
 
-      {/* Tab 4: Repair Bookings */}
+      {/* Tab 4: Q&A / FAQs Management */}
+      {activeTab === 'faqs' && (
+        <div className="space-y-8">
+          <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-xl space-y-4">
+            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <Plus className="w-5 h-5 text-sky-600" /> Add New Q&A / FAQ Item
+            </h3>
+            <form onSubmit={handleAddFaq} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Question</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Do you offer warranty on repairs?"
+                  value={newFaqQ}
+                  onChange={(e) => setNewFaqQ(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:border-sky-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Answer</label>
+                <textarea
+                  required
+                  rows={3}
+                  placeholder="Answer text..."
+                  value={newFaqA}
+                  onChange={(e) => setNewFaqA(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:border-sky-500"
+                />
+              </div>
+              <button
+                type="submit"
+                className="w-full py-3 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl shadow-md transition-all text-sm"
+              >
+                Add Q&A Item
+              </button>
+            </form>
+          </div>
+
+          <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-xl space-y-6">
+            <h3 className="text-xl font-bold text-slate-900">Manage Q&A / FAQs ({faqs.length})</h3>
+            <div className="space-y-4">
+              {faqs.map((faq, idx) => (
+                <div key={idx} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <input
+                      type="text"
+                      value={faq.question}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setFaqs(faqs.map((f, i) => i === idx ? { ...f, question: val } : f));
+                      }}
+                      className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-sm font-bold text-slate-900"
+                    />
+                    <button
+                      onClick={() => setFaqs(faqs.filter((_, i) => i !== idx))}
+                      className="p-2 text-rose-600 hover:bg-rose-50 rounded-xl shrink-0"
+                      title="Delete Q&A"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <textarea
+                    rows={2}
+                    value={faq.answer}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setFaqs(faqs.map((f, i) => i === idx ? { ...f, answer: val } : f));
+                    }}
+                    className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs text-slate-700 font-medium"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab 5: Repair Bookings */}
       {activeTab === 'bookings' && (
         <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-xl space-y-6">
           <h3 className="text-xl font-bold text-slate-900">Repair Appointments & Status Manager</h3>
@@ -531,6 +719,145 @@ export const AdminView: React.FC<AdminViewProps> = ({
               ))
             )}
           </div>
+        </div>
+      )}
+
+      {/* Tab 6: Admin & Moderators Management */}
+      {activeTab === 'admins' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          
+          {/* Change PIN Card */}
+          <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-xl space-y-6">
+            <div className="border-b border-slate-100 pb-4">
+              <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                <Lock className="w-5 h-5 text-sky-600" /> Change Admin PIN / Password
+              </h3>
+              <p className="text-xs text-slate-500">Update the master security PIN required to access the admin portal.</p>
+            </div>
+
+            {pinChangeMsg && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl font-medium">
+                {pinChangeMsg}
+              </div>
+            )}
+
+            <form onSubmit={handleChangePin} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">New Admin PIN / Password</label>
+                <input
+                  type="password"
+                  required
+                  placeholder="Enter new 4+ digit PIN"
+                  value={newPinInput}
+                  onChange={(e) => setNewPinInput(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:border-sky-500"
+                />
+              </div>
+              <button
+                type="submit"
+                className="w-full py-3 bg-sky-600 hover:bg-sky-700 text-white font-extrabold rounded-xl shadow-md transition-all text-sm"
+              >
+                Update Admin PIN
+              </button>
+            </form>
+          </div>
+
+          {/* Add Admin / Moderator Card */}
+          <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-xl space-y-6">
+            <div className="border-b border-slate-100 pb-4">
+              <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-sky-600" /> Add New Admin / Moderator Role
+              </h3>
+              <p className="text-xs text-slate-500">Grant admin or moderator access to staff members.</p>
+            </div>
+
+            <form onSubmit={handleAddTeamMember} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Full Name</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Alex Smith"
+                  value={newMemberName}
+                  onChange={(e) => setNewMemberName(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:border-sky-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Username / ID</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="asmith"
+                    value={newMemberUsername}
+                    onChange={(e) => setNewMemberUsername(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:border-sky-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Access PIN</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="PIN Code"
+                    value={newMemberPin}
+                    onChange={(e) => setNewMemberPin(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:border-sky-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Role</label>
+                <select
+                  value={newMemberRole}
+                  onChange={(e) => setNewMemberRole(e.target.value as any)}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:border-sky-500"
+                >
+                  <option value="Administrator">Administrator</option>
+                  <option value="Moderator">Moderator</option>
+                </select>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-extrabold rounded-xl shadow-md transition-all text-sm flex items-center justify-center gap-2"
+              >
+                <Plus className="w-4 h-4" /> Add Staff Member
+              </button>
+            </form>
+          </div>
+
+          {/* Current Team Members List */}
+          <div className="lg:col-span-2 bg-white p-8 rounded-3xl border border-slate-200 shadow-xl space-y-6">
+            <h3 className="text-lg font-bold text-slate-900">Authorized Admins & Moderators ({teamMembers.length})</h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {teamMembers.map((member) => (
+                <div key={member.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 flex justify-between items-center">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-sky-100 text-sky-700">
+                      {member.role}
+                    </span>
+                    <h4 className="font-bold text-slate-900 text-sm mt-1">{member.name}</h4>
+                    <p className="text-xs text-slate-500">Username: {member.username} | PIN: {member.pin}</p>
+                  </div>
+                  {teamMembers.length > 1 && (
+                    <button
+                      onClick={() => removeTeamMember(member.id)}
+                      className="p-2 text-rose-600 hover:bg-rose-50 rounded-xl"
+                      title="Remove Member"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
         </div>
       )}
 

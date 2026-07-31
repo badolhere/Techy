@@ -6,9 +6,13 @@ import { AccessoryProduct } from '../types';
 interface HomeViewProps {
   setActiveTab: (tab: string) => void;
   addToCart: (product: AccessoryProduct) => void;
+  products?: AccessoryProduct[];
+  services?: any[];
+  storeDetails?: typeof STORE_DETAILS;
+  faqs?: typeof FAQS;
 }
 
-export const HomeView: React.FC<HomeViewProps> = ({ setActiveTab, addToCart }) => {
+export const HomeView: React.FC<HomeViewProps> = ({ setActiveTab, addToCart, faqs = FAQS }) => {
   return (
     <div className="space-y-16 pb-20">
       
@@ -288,7 +292,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ setActiveTab, addToCart }) =
           </div>
 
           <div className="space-y-4">
-            {FAQS.map((faq, idx) => (
+            {faqs.map((faq, idx) => (
               <div key={idx} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-2">
                 <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                   <span className="text-sky-600">Q.</span> {faq.question}

@@ -10,7 +10,7 @@ import { ContactView } from './components/ContactView';
 import { AdminView } from './components/AdminView';
 import { AuthModal } from './components/AuthModal';
 import { MyRepairsModal } from './components/MyRepairsModal';
-import { STORE_DETAILS, ACCESSORY_PRODUCTS, REPAIR_SERVICES } from './data/mockData';
+import { STORE_DETAILS, ACCESSORY_PRODUCTS, REPAIR_SERVICES, FAQS } from './data/mockData';
 import { AccessoryProduct, CartItem, Booking } from './types';
 
 export default function App() {
@@ -23,6 +23,7 @@ export default function App() {
   const [storeDetails, setStoreDetails] = useState(STORE_DETAILS);
   const [products, setProducts] = useState<AccessoryProduct[]>(ACCESSORY_PRODUCTS);
   const [services, setServices] = useState(REPAIR_SERVICES);
+  const [faqs, setFaqs] = useState(FAQS);
   const [bookings, setBookings] = useState<Booking[]>([
     {
       id: "b-1",
@@ -133,6 +134,7 @@ export default function App() {
             products={products}
             services={services}
             storeDetails={storeDetails}
+            faqs={faqs}
           />
         )}
 
@@ -184,6 +186,8 @@ export default function App() {
             bookings={bookings}
             setBookings={setBookings}
             orders={orders}
+            faqs={faqs}
+            setFaqs={setFaqs}
           />
         )}
       </main>
